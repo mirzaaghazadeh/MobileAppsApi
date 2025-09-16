@@ -56,20 +56,27 @@ function loadEnv($path) {
 function createTempImageUrl($uploadedFile) {
     $uploadDir = __DIR__ . '/temp_uploads/';
     
+    // Debug: Log the upload directory path
+    error_log("Upload directory: " . $uploadDir);
+    
     // Create directory if it doesn't exist
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
+            error_log("Failed to create directory: " . $uploadDir);
             throw new Exception('Failed to create temp_uploads directory. Check permissions.');
         }
+        error_log("Created directory: " . $uploadDir);
     }
     
     // Check if directory is writable
     if (!is_writable($uploadDir)) {
+        error_log("Directory not writable: " . $uploadDir);
         throw new Exception('temp_uploads directory is not writable. Check permissions.');
     }
     
     // Validate uploaded file
     if (!isset($uploadedFile['tmp_name']) || !is_uploaded_file($uploadedFile['tmp_name'])) {
+        error_log("Invalid uploaded file");
         throw new Exception('Invalid uploaded file.');
     }
     
@@ -78,15 +85,23 @@ function createTempImageUrl($uploadedFile) {
     $fileName = uniqid('img_', true) . '.' . $fileExtension;
     $filePath = $uploadDir . $fileName;
     
+    // Debug: Log file paths
+    error_log("Source file: " . $uploadedFile['tmp_name']);
+    error_log("Destination file: " . $filePath);
+    
     // Move uploaded file
     if (move_uploaded_file($uploadedFile['tmp_name'], $filePath)) {
-        // Return the public URL (adjust this based on your server configuration)
+        error_log("File moved successfully to: " . $filePath);
+        // Return the local URL that can be accessed by the server
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
         $currentDir = dirname($_SERVER['REQUEST_URI']);
-        return $baseUrl . $currentDir . '/temp_uploads/' . $fileName;
+        $url = $baseUrl . $currentDir . '/temp_uploads/' . $fileName;
+        error_log("Generated URL: " . $url);
+        return $url;
+    } else {
+        error_log("Failed to move uploaded file from " . $uploadedFile['tmp_name'] . " to " . $filePath);
+        throw new Exception('Failed to move uploaded file. Error: ' . error_get_last()['message'] ?? 'Unknown error');
     }
-    
-    throw new Exception('Failed to move uploaded file. Error: ' . error_get_last()['message'] ?? 'Unknown error');
 }
 
 // Function to delete temporary file
@@ -197,11 +212,14 @@ try {
     // Create temporary public URL for the image
     $imageUrl = createTempImageUrl($_FILES['image']);
     
+    // Debug: Check if file was actually saved
+    error_log("Image URL created: " . $imageUrl);
+    
     try {
         // Send to OpenAI API
         $response = sendToOpenAI($imageUrl, $apiKey, $customPrompt);
         
-        // Clean up temporary file
+        // Clean up temporary file ONLY after successful OpenAI response
         deleteTempFile($imageUrl);
         
         // Extract the AI response text
@@ -222,8 +240,10 @@ try {
         ]);
         
     } catch (Exception $e) {
-        // Clean up temporary file even if there's an error
-        deleteTempFile($imageUrl);
+        // DON'T clean up temporary file on error - keep it for debugging
+        // if (isset($imageUrl)) {
+        //     deleteTempFile($imageUrl);
+        // }
         throw $e;
     }
     
