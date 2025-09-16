@@ -230,10 +230,7 @@ try {
         // Extract the AI response text
         $aiResponse = '';
         
-        echo json_encode($response);
-
-        die();
-
+      
  
         // Handle the new responses API format
         if (isset($response['output']) && !empty($response['output'])) {
