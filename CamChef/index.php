@@ -100,8 +100,8 @@ function createTempImageUrl($uploadedFile) {
             error_log("ERROR: File does not exist after move at: " . $filePath);
         }
         
-        // Return the local URL that can be accessed by the server
-        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
+        // Return the public URL that can be accessed by OpenAI
+        $baseUrl = 'https://navid.tr';
         $url = $baseUrl . '/MobileAppsAPi/CamChef/temp_uploads/' . $fileName;
         error_log("Generated URL: " . $url);
         return $url;
@@ -140,10 +140,6 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
                 'role' => 'user',
                 'content' => [
                     [
-                        'type' => 'input_text',
-                        'text' => $prompt ?: 'What is in this image?'
-                    ],
-                    [
                         'type' => 'input_image',
                         'image_url' => $imageUrl
                     ]
@@ -151,6 +147,8 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
             ]
         ]
     ];
+    dd(data);
+    
     
     $headers = [
         'Content-Type: application/json',
