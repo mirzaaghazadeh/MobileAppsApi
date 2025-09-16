@@ -140,6 +140,10 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
                 'role' => 'user',
                 'content' => [
                     [
+                        'type' => 'input_text',
+                        'text' => $prompt ?: 'What is in this image?'
+                    ],
+                    [
                         'type' => 'input_image',
                         'image_url' => $imageUrl
                     ]
@@ -147,9 +151,6 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
             ]
         ]
     ];
-
-    print_r($data);
-die();
 
     
     $headers = [
