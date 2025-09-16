@@ -218,9 +218,12 @@ try {
     // Debug: Check if file was actually saved
     error_log("Image URL created: " . $imageUrl);
     
+    // For testing: Use a publicly accessible image URL
+    $testImageUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg';
+    
     try {
-        // Send to OpenAI API
-        $response = sendToOpenAI($imageUrl, $apiKey, $customPrompt);
+        // Send to OpenAI API using test URL for now
+        $response = sendToOpenAI($testImageUrl, $apiKey, $customPrompt);
         
         // Clean up temporary file ONLY after successful OpenAI response
         deleteTempFile($imageUrl);
@@ -231,12 +234,34 @@ try {
         // Debug: Log the full response to understand the structure
         error_log("OpenAI Response: " . json_encode($response));
         
-        // Handle different response formats
-        if (isset($response['choices']) && !empty($response['choices'])) {
-            // Old chat completions format
-            $aiResponse = $response['choices'][0]['message']['content'];
+        // Handle the new responses API format
+        if (isset($response['output']) && !empty($response['output'])) {
+            // New responses format - content is in output[0]['content'][0]['text']
+            $output = $response['output'][0];
+            if (isset($output['content']) && !empty($output['content'])) {
+                $content = $output['content'][0];
+                if (isset($content['text'])) {
+                    $aiResponse = $content['text'];
+                }
+            }
+        } elseif (isset($response['choices']) && !empty($response['choices'])) {
+            // Old chat completions format - content is in choices[0]['message']['content']
+            $content = $response['choices'][0]['message']['content'];
+            
+            // The content might be a JSON string, try to decode it
+            $decodedContent = json_decode($content, true);
+            if (json_last_error() === JSON_ERROR_NONE && isset($decodedContent['analysis'])) {
+                // If it's JSON with analysis field, extract the analysis
+                $aiResponse = $decodedContent['analysis'];
+            } elseif (json_last_error() === JSON_ERROR_NONE && is_string($decodedContent)) {
+                // If it's a simple JSON string
+                $aiResponse = $decodedContent;
+            } else {
+                // If it's plain text, use as is
+                $aiResponse = $content;
+            }
         } elseif (isset($response['content'])) {
-            // New responses format - direct content
+            // Direct content format
             $aiResponse = $response['content'];
         } elseif (isset($response['response'])) {
             // Alternative responses format
