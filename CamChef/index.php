@@ -102,7 +102,7 @@ function createTempImageUrl($uploadedFile) {
         
         // Return the local URL that can be accessed by the server
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
-        $url = $baseUrl . '/CamChef/temp_uploads/' . $fileName;
+        $url = $baseUrl . '/MobileAppsAPi/CamChef/temp_uploads/' . $fileName;
         error_log("Generated URL: " . $url);
         return $url;
     } else {
