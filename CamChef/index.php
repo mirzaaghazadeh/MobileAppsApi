@@ -92,6 +92,14 @@ function createTempImageUrl($uploadedFile) {
     // Move uploaded file
     if (move_uploaded_file($uploadedFile['tmp_name'], $filePath)) {
         error_log("File moved successfully to: " . $filePath);
+        
+        // Verify file exists after move
+        if (file_exists($filePath)) {
+            error_log("File verified to exist at: " . $filePath);
+        } else {
+            error_log("ERROR: File does not exist after move at: " . $filePath);
+        }
+        
         // Return the local URL that can be accessed by the server
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
         $currentDir = dirname($_SERVER['REQUEST_URI']);
@@ -124,24 +132,24 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
     $url = 'https://api.openai.com/v1/chat/completions';
     
     // Default prompt if none provided
-    $defaultPrompt = 'Analyze this image and describe what you see in detail. Focus on identifying food items, cooking techniques, ingredients, and any culinary aspects.';
-    $textPrompt = $prompt ?: $defaultPrompt;
+    $textPrompt = 'Analyze this image';
     
     $data = [
         'model' => 'gpt-4o', // Updated to use the correct model
         'messages' => [
             [
                 'role' => 'user',
+                'prompt'=>[
+                    'id'=>'pmpt_6898f03dbdbc8197a54a35fcc707a91f01e7adb5cb7bd1e3'
+                ],
                 'content' => [
                     [
-                        'type' => 'text',
+                        'type' => 'input_text',
                         'text' => $textPrompt
                     ],
                     [
-                        'type' => 'image_url',
-                        'image_url' => [
-                            'url' => $imageUrl
-                        ]
+                        'type' => 'input_image',
+                        'image_url' => $imageUrl
                     ]
                 ]
             ]
