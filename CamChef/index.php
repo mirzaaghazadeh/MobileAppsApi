@@ -54,11 +54,23 @@ function loadEnv($path) {
 
 // Function to create a temporary public URL for uploaded image
 function createTempImageUrl($uploadedFile) {
-    $uploadDir = 'temp_uploads/';
+    $uploadDir = __DIR__ . '/temp_uploads/';
     
     // Create directory if it doesn't exist
     if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
+        if (!mkdir($uploadDir, 0755, true)) {
+            throw new Exception('Failed to create temp_uploads directory. Check permissions.');
+        }
+    }
+    
+    // Check if directory is writable
+    if (!is_writable($uploadDir)) {
+        throw new Exception('temp_uploads directory is not writable. Check permissions.');
+    }
+    
+    // Validate uploaded file
+    if (!isset($uploadedFile['tmp_name']) || !is_uploaded_file($uploadedFile['tmp_name'])) {
+        throw new Exception('Invalid uploaded file.');
     }
     
     // Generate unique filename
@@ -71,10 +83,10 @@ function createTempImageUrl($uploadedFile) {
         // Return the public URL (adjust this based on your server configuration)
         $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
         $currentDir = dirname($_SERVER['REQUEST_URI']);
-        return $baseUrl . $currentDir . '/' . $filePath;
+        return $baseUrl . $currentDir . '/temp_uploads/' . $fileName;
     }
     
-    throw new Exception('Failed to upload file');
+    throw new Exception('Failed to move uploaded file. Error: ' . error_get_last()['message'] ?? 'Unknown error');
 }
 
 // Function to delete temporary file
@@ -85,7 +97,7 @@ function deleteTempFile($url) {
     // Extract just the filename part after the last slash
     $pathParts = explode('/', $filePath);
     $fileName = end($pathParts);
-    $localPath = 'temp_uploads/' . $fileName;
+    $localPath = __DIR__ . '/temp_uploads/' . $fileName;
     
     if (file_exists($localPath)) {
         unlink($localPath);
