@@ -137,6 +137,9 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
         'prompt' => [
             'id' => 'pmpt_6898f03dbdbc8197a54a35fcc707a91f01e7adb5cb7bd1e3'
         ],
+        'response_format'=>[
+            'type'=>'json_object'
+        ],
         'input' => [
             [
                 'role' => 'user',
