@@ -233,8 +233,34 @@ try {
         // Debug: Log the full response to understand the structure
         error_log("OpenAI Response: " . json_encode($response));
         
-
-        $aiResponse = json_encode($response);
+        // Handle the new responses API format
+        if (isset($response['output']) && !empty($response['output'])) {
+            // New responses format - content is in output[0]['content'][0]['text']
+            $output = $response['output'][0];
+            if (isset($output['content']) && !empty($output['content'])) {
+                $content = $output['content'][0];
+                if (isset($content['text'])) {
+                    $textContent = $content['text'];
+                    
+                    // Try to parse the text as JSON (since it contains recipe data)
+                    $decodedContent = json_decode($textContent, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        // If it's valid JSON, use the parsed object
+                        $aiResponse = $decodedContent;
+                    } else {
+                        // If it's not JSON, use the text as is
+                        $aiResponse = $textContent;
+                    }
+                }
+            }
+        } elseif (isset($response['choices']) && !empty($response['choices'])) {
+            // Fallback for chat completions format
+            $content = $response['choices'][0]['message']['content'];
+            $aiResponse = $content;
+        } else {
+            // Fallback - return the entire response for debugging
+            $aiResponse = $response;
+        }
     
         
         // Return successful response
