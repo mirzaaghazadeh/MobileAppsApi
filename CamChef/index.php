@@ -133,7 +133,7 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
     $url = 'https://api.openai.com/v1/responses';
     
     $data = [
-        'model' => 'gpt-5',
+        // 'model' => 'gpt-5',
         'prompt' => [
             'id' => 'pmpt_6898f03dbdbc8197a54a35fcc707a91f01e7adb5cb7bd1e3'
         ],
@@ -141,10 +141,10 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
             [
                 'role' => 'user',
                 'content' => [
-                    [
-                        'type' => 'input_text',
-                        'text' => $prompt ?: 'What is in this image?'
-                    ],
+                    // [
+                    //     'type' => 'input_text',
+                    //     'text' => $prompt ?: 'What is in this image?'
+                    // ],
                     [
                         'type' => 'input_image',
                         'image_url' => $imageUrl
@@ -233,10 +233,8 @@ try {
         echo json_encode($response);
 
         die();
-        
-        // Debug: Log the full response to understand the structure
-        error_log("OpenAI Response: " . json_encode($response));
-        
+
+ 
         // Handle the new responses API format
         if (isset($response['output']) && !empty($response['output'])) {
             // New responses format - content is in output[0]['content'][0]['text']
