@@ -1,0 +1,227 @@
+<?php
+/**
+ * CamChef REST API
+ * Handles image uploads and sends them to OpenAI API for analysis
+ * Returns JSON responses only
+ */
+
+// Set JSON content type and CORS headers
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// Only allow POST requests for the API
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Method not allowed. Only POST requests are accepted.',
+        'allowed_methods' => ['POST']
+    ]);
+    exit();
+}
+
+// Function to load environment variables from .env file
+function loadEnv($path) {
+    if (!file_exists($path)) {
+        throw new Exception('.env file not found');
+    }
+    
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) {
+            continue; // Skip comments
+        }
+        
+        list($name, $value) = explode('=', $line, 2);
+        $name = trim($name);
+        $value = trim($value);
+        
+        if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
+            putenv(sprintf('%s=%s', $name, $value));
+            $_ENV[$name] = $value;
+            $_SERVER[$name] = $value;
+        }
+    }
+}
+
+// Function to create a temporary public URL for uploaded image
+function createTempImageUrl($uploadedFile) {
+    $uploadDir = 'temp_uploads/';
+    
+    // Create directory if it doesn't exist
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    // Generate unique filename
+    $fileExtension = pathinfo($uploadedFile['name'], PATHINFO_EXTENSION);
+    $fileName = uniqid('img_', true) . '.' . $fileExtension;
+    $filePath = $uploadDir . $fileName;
+    
+    // Move uploaded file
+    if (move_uploaded_file($uploadedFile['tmp_name'], $filePath)) {
+        // Return the public URL (adjust this based on your server configuration)
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
+        $currentDir = dirname($_SERVER['REQUEST_URI']);
+        return $baseUrl . $currentDir . '/' . $filePath;
+    }
+    
+    throw new Exception('Failed to upload file');
+}
+
+// Function to delete temporary file
+function deleteTempFile($url) {
+    $parsedUrl = parse_url($url);
+    $filePath = ltrim($parsedUrl['path'], '/');
+    
+    // Extract just the filename part after the last slash
+    $pathParts = explode('/', $filePath);
+    $fileName = end($pathParts);
+    $localPath = 'temp_uploads/' . $fileName;
+    
+    if (file_exists($localPath)) {
+        unlink($localPath);
+    }
+}
+
+// Function to send request to OpenAI API
+function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
+    $url = 'https://api.openai.com/v1/chat/completions';
+    
+    // Default prompt if none provided
+    $defaultPrompt = 'Analyze this image and describe what you see in detail. Focus on identifying food items, cooking techniques, ingredients, and any culinary aspects.';
+    $textPrompt = $prompt ?: $defaultPrompt;
+    
+    $data = [
+        'model' => 'gpt-4o', // Updated to use the correct model
+        'messages' => [
+            [
+                'role' => 'user',
+                'content' => [
+                    [
+                        'type' => 'text',
+                        'text' => $textPrompt
+                    ],
+                    [
+                        'type' => 'image_url',
+                        'image_url' => [
+                            'url' => $imageUrl
+                        ]
+                    ]
+                ]
+            ]
+        ],
+        'max_tokens' => 500
+    ];
+    
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $apiKey
+    ];
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    if (curl_error($ch)) {
+        throw new Exception('Curl error: ' . curl_error($ch));
+    }
+    
+    curl_close($ch);
+    
+    if ($httpCode !== 200) {
+        throw new Exception('OpenAI API error: HTTP ' . $httpCode . ' - ' . $response);
+    }
+    
+    return json_decode($response, true);
+}
+
+// Main API execution
+try {
+    // Load environment variables
+    loadEnv('.env');
+    
+    // Get API key from environment
+    $apiKey = getenv('OPENAI_API_KEY');
+    if (empty($apiKey) || $apiKey === 'your_openai_api_key_here') {
+        throw new Exception('OpenAI API key not found or not set in .env file');
+    }
+    
+    // Check if image was uploaded
+    if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception('No image uploaded or upload error occurred. Please send image via form-data with key "image"');
+    }
+    
+    // Validate image type
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!in_array($_FILES['image']['type'], $allowedTypes)) {
+        throw new Exception('Invalid image type. Only JPEG, PNG, GIF, and WebP are allowed.');
+    }
+    
+    // Validate file size (max 10MB)
+    $maxSize = 10 * 1024 * 1024; // 10MB
+    if ($_FILES['image']['size'] > $maxSize) {
+        throw new Exception('File too large. Maximum size is 10MB.');
+    }
+    
+    // Get custom prompt if provided
+    $customPrompt = isset($_POST['prompt']) ? trim($_POST['prompt']) : null;
+    
+    // Create temporary public URL for the image
+    $imageUrl = createTempImageUrl($_FILES['image']);
+    
+    try {
+        // Send to OpenAI API
+        $response = sendToOpenAI($imageUrl, $apiKey, $customPrompt);
+        
+        // Clean up temporary file
+        deleteTempFile($imageUrl);
+        
+        // Extract the AI response text
+        $aiResponse = '';
+        if (isset($response['choices']) && !empty($response['choices'])) {
+            $aiResponse = $response['choices'][0]['message']['content'];
+        }
+        
+        // Return successful response
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Image analyzed successfully',
+            'ai_response' => $aiResponse,
+            'usage' => isset($response['usage']) ? $response['usage'] : null,
+            'model' => 'gpt-4o',
+            'timestamp' => date('c')
+        ]);
+        
+    } catch (Exception $e) {
+        // Clean up temporary file even if there's an error
+        deleteTempFile($imageUrl);
+        throw $e;
+    }
+    
+} catch (Exception $e) {
+    // Handle errors and return JSON error response
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage(),
+        'timestamp' => date('c')
+    ]);
+}
+?>
