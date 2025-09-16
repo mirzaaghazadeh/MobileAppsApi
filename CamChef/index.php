@@ -218,12 +218,9 @@ try {
     // Debug: Check if file was actually saved
     error_log("Image URL created: " . $imageUrl);
     
-    // For testing: Use a publicly accessible image URL
-    $testImageUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg';
-    
     try {
-        // Send to OpenAI API using test URL for now
-        $response = sendToOpenAI($testImageUrl, $apiKey, $customPrompt);
+        // Send to OpenAI API
+        $response = sendToOpenAI($imageUrl, $apiKey, $customPrompt);
         
         // Clean up temporary file ONLY after successful OpenAI response
         deleteTempFile($imageUrl);
@@ -245,30 +242,9 @@ try {
                 }
             }
         } elseif (isset($response['choices']) && !empty($response['choices'])) {
-            // Old chat completions format - content is in choices[0]['message']['content']
+            // Fallback for chat completions format
             $content = $response['choices'][0]['message']['content'];
-            
-            // The content might be a JSON string, try to decode it
-            $decodedContent = json_decode($content, true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($decodedContent['analysis'])) {
-                // If it's JSON with analysis field, extract the analysis
-                $aiResponse = $decodedContent['analysis'];
-            } elseif (json_last_error() === JSON_ERROR_NONE && is_string($decodedContent)) {
-                // If it's a simple JSON string
-                $aiResponse = $decodedContent;
-            } else {
-                // If it's plain text, use as is
-                $aiResponse = $content;
-            }
-        } elseif (isset($response['content'])) {
-            // Direct content format
-            $aiResponse = $response['content'];
-        } elseif (isset($response['response'])) {
-            // Alternative responses format
-            $aiResponse = $response['response'];
-        } elseif (isset($response['text'])) {
-            // Another possible format
-            $aiResponse = $response['text'];
+            $aiResponse = $content;
         } else {
             // Fallback - return the entire response for debugging
             $aiResponse = json_encode($response);
