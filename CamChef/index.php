@@ -151,11 +151,6 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
             ]
         ]
     ];
-
-    echo json_encode($data);
-
-    die();
-    
     
     $headers = [
         'Content-Type: application/json',
