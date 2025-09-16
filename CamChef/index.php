@@ -147,8 +147,8 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
             ]
         ]
     ];
-    dd(data);
-    
+    die(data);
+
     
     $headers = [
         'Content-Type: application/json',
