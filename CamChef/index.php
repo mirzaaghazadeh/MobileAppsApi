@@ -148,6 +148,7 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
                         'text' => $textPrompt
                     ],
                     [
+                        'type' => 'image_url',
                         'image_url' => [
                             'url' => $imageUrl
                         ]
