@@ -148,7 +148,7 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
         ]
     ];
 
-    die($data);
+    print_r($data);
 
     
     $headers = [
