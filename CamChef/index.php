@@ -128,34 +128,28 @@ function deleteTempFile($url) {
 
 // Function to send request to OpenAI API
 function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
-    $url = 'https://api.openai.com/v1/chat/completions';
-    
-    // Default prompt if none provided
-    $textPrompt = 'Analyze this image';
+    $url = 'https://api.openai.com/v1/responses';
     
     $data = [
-        'model' => 'gpt-4.1', // Updated to use the correct model
-        'prompt'=>[
-                    'id'=>'pmpt_6898f03dbdbc8197a54a35fcc707a91f01e7adb5cb7bd1e3'
-                ],
-        'messages' => [
+        'model' => 'gpt-5',
+        'prompt' => [
+            'id' => 'pmpt_6898f03dbdbc8197a54a35fcc707a91f01e7adb5cb7bd1e3'
+        ],
+        'input' => [
             [
                 'role' => 'user',
                 'content' => [
                     [
-                        'type' => 'text',
-                        'text' => $textPrompt
+                        'type' => 'input_text',
+                        'text' => $prompt ?: 'What is in this image?'
                     ],
                     [
-                        'type' => 'image_url',
-                        'image_url' => [
-                            'url' => $imageUrl
-                        ]
+                        'type' => 'input_image',
+                        'image_url' => $imageUrl
                     ]
                 ]
             ]
-        ],
-        'max_tokens' => 500
+        ]
     ];
     
     $headers = [
