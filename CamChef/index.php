@@ -134,7 +134,7 @@ function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
     $textPrompt = 'Analyze this image';
     
     $data = [
-        'model' => 'gpt-4o', // Updated to use the correct model
+        'model' => 'gpt-4.1', // Updated to use the correct model
         'prompt'=>[
                     'id'=>'pmpt_6898f03dbdbc8197a54a35fcc707a91f01e7adb5cb7bd1e3'
                 ],
