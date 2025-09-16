@@ -230,6 +230,10 @@ try {
         // Extract the AI response text
         $aiResponse = '';
         
+        echo json_encode($response);
+
+        die();
+        
         // Debug: Log the full response to understand the structure
         error_log("OpenAI Response: " . json_encode($response));
         
