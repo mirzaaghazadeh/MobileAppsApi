@@ -126,6 +126,8 @@ function deleteTempFile($url) {
     }
 }
 
+
+
 // Function to send request to OpenAI API
 function sendToOpenAI($imageUrl, $apiKey, $prompt = null) {
     $url = 'https://api.openai.com/v1/responses';
@@ -257,7 +259,7 @@ try {
             'message' => 'Image analyzed successfully',
             'ai_response' => $aiResponse,
             'usage' => isset($response['usage']) ? $response['usage'] : null,
-            'model' => 'gpt-4o',
+            'model' => 'gpt-5',
             'timestamp' => date('c')
         ]);
         
