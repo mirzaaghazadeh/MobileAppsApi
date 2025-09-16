@@ -227,8 +227,26 @@ try {
         
         // Extract the AI response text
         $aiResponse = '';
+        
+        // Debug: Log the full response to understand the structure
+        error_log("OpenAI Response: " . json_encode($response));
+        
+        // Handle different response formats
         if (isset($response['choices']) && !empty($response['choices'])) {
+            // Old chat completions format
             $aiResponse = $response['choices'][0]['message']['content'];
+        } elseif (isset($response['content'])) {
+            // New responses format - direct content
+            $aiResponse = $response['content'];
+        } elseif (isset($response['response'])) {
+            // Alternative responses format
+            $aiResponse = $response['response'];
+        } elseif (isset($response['text'])) {
+            // Another possible format
+            $aiResponse = $response['text'];
+        } else {
+            // Fallback - return the entire response for debugging
+            $aiResponse = json_encode($response);
         }
         
         // Return successful response
